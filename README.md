@@ -1,2 +1,2 @@
 # ripe-atlas-atlas
-https://atlas.ripe.net/api/v2/probes
+Root API Directory : https://atlas.ripe.net/api/v2/root/
