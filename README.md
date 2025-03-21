@@ -16,5 +16,7 @@ options:
                         Filtrer par date de première connexion (format: YYYY-MM-DD)
   --last-connected-after LAST_CONNECTED_AFTER
                         Filtrer par date de dernière connexion (format: YYYY-MM-DD)
+  --format {csv,json,txt}
+                        Format de sortie des données (csv, json, txt)
   --output OUTPUT       Nom du fichier CSV de sortie
 ```
