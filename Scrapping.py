@@ -1,5 +1,6 @@
 import json
 import os
+from time import sleep
 
 import requests
 import time
@@ -7,6 +8,7 @@ import csv
 import argparse
 import pytz
 from datetime import datetime
+from tqdm import tqdm
 
 API_URL = "https://atlas.ripe.net/api/v2/probes/{}"
 tz = pytz.timezone('Europe/Paris')
@@ -15,7 +17,9 @@ def get_probe_info(probe_id):
     """Récupère et structure les informations d'un probe via l'API RIPE Atlas."""
     url = API_URL.format(probe_id)
     response = requests.get(url)
-
+    if response.status_code == 429:
+        sleep(100)
+        response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
 
@@ -34,6 +38,7 @@ def get_probe_info(probe_id):
             "IPv4": data.get("address_v4", "N/A"),
             "ASN": data.get("asn_v4", "N/A"),
             "Pays": data.get("country_code", "N/A"),
+            "Description": data.get("description", "N/A"),
             "Longitude": longitude,
             "Latitude": latitude,
             "Status": data.get("status", {}).get("name", "Unknown"),
@@ -41,7 +46,22 @@ def get_probe_info(probe_id):
             "Last Connected": format_timestamp(data.get("last_connected")),
             "Tags": ", ".join(tag["name"] for tag in data.get("tags", [])) if data.get("tags") else "N/A"
         }
+    elif response.status_code == 404:
+        return {
+            "ID": probe_id,
+            "IPv4": "Not Found",
+            "ASN":  "Not Found",
+            "Pays":  "Not Found",
+            "Description": "Not Found",
+            "Longitude": "Not Found",
+            "Latitude": "Not Found",
+            "Status": "Not Found",
+            "First Connected": "Not Found",
+            "Last Connected": "Not Found",
+            "Tags": "Not Found",
+        }
     return None
+
 
 def get_output_filename(base_name, output_format):
     """Génère un nom de fichier correspondant au format de sortie."""
@@ -72,6 +92,7 @@ def export_data(probes, filename, output_format):
                 file.write(f"IPv4: {probe['IPv4']}\n")
                 file.write(f"ASN: {probe['ASN']}\n")
                 file.write(f"Pays: {probe['Pays']}\n")
+                file.write(f"Description: {probe['Description']}\n")
                 file.write(f"Longitude: {probe['Longitude']}, Latitude: {probe['Latitude']}\n")
                 file.write(f"Status: {probe['Status']}\n")
                 file.write(f"First Connected: {probe['First Connected']}\n")
@@ -135,11 +156,10 @@ def main():
     connected_filter = bool(args.connected) if args.connected is not None else None
 
     probes = []
-    for probe_id in range(args.start_id, args.end_id + 1):
+    for probe_id in tqdm(range(args.start_id, args.end_id + 1), desc="Récupération des probes", unit="probe"):
         info = get_probe_info(probe_id)
         if info:
             probes.append(info)
-        time.sleep(0.25)
 
     # Application des filtres
     filtered_probes = filter_probes(
